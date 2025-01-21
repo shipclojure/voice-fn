@@ -3,6 +3,7 @@
    [clojure.core.async :as a :refer [chan go-loop]]
    [malli.core :as m]
    [malli.error :as me]
+   [malli.util :as mu]
    [taoensso.telemere :as t]
    [voice-fn.frame :as frame]
    [voice-fn.protocol :as p]
@@ -21,24 +22,6 @@
   (throw (ex-info (str "Unknown processor " id)
                   {:id id
                    :cause :processor.error/unknown-type})))
-
-(def PipelineConfigSchema
-  [:map
-   [:audio-in/sample-rate {:default 16000} schema/SampleRate]
-   [:audio-in/channels {:default 1} schema/AudioChannels]
-   [:audio-in/encoding {:default :pcm-signed} schema/AudioEncoding]
-   [:audio-in/sample-size-bits {:default 16} schema/SampleSizeBits]
-   [:audio-out/sample-rate {:default 16000} schema/SampleRate]
-   [:audio-out/channels {:default 1} schema/AudioChannels]
-   [:audio-out/encoding {:default :pcm-signed} schema/AudioEncoding]
-   [:audio-out/sample-size-bits {:default 16} schema/SampleSizeBits]
-   [:pipeline/language schema/Language]
-   [:pipeline/supports-interrupt? {:default false
-                                   :optional true} :boolean]
-   [:llm/context schema/LLMContext]
-   [:llm/registered-functions {:optional true} [:map-of :string [:=> [:cat :map] :any]]]
-   [:transport/in-ch schema/CoreAsyncChannel]
-   [:transport/out-ch schema/CoreAsyncChannel]])
 
 (defn supports-interrupt?
   [pipeline]
@@ -63,9 +46,9 @@
   [{pipeline-config :pipeline/config
     processors :pipeline/processors}]
   (let [;; Validate main pipeline config
-        pipeline-valid? (m/validate PipelineConfigSchema pipeline-config)
+        pipeline-valid? (m/validate schema/PipelineConfigSchema pipeline-config)
         pipeline-errors (when-not pipeline-valid?
-                          (me/humanize (m/explain PipelineConfigSchema pipeline-config)))
+                          (me/humanize (m/explain schema/PipelineConfigSchema pipeline-config)))
 
         ;; Validate each processor's config
         processor-results
